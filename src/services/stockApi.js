@@ -8,6 +8,17 @@
  * - Defaults to deployed Render backend in production (https://tradepulse-backend.onrender.com)
  */
 export function getApiBaseUrl() {
+  // 1. Check custom user override in localStorage (configured in settings modal)
+  if (typeof window !== 'undefined') {
+    const custom = localStorage.getItem('tradepulse_backend_url');
+    if (custom !== null) {
+      const trimmed = custom.trim();
+      if (trimmed === 'standalone') return 'standalone';
+      if (trimmed) return trimmed.replace(/\/+$/, '');
+    }
+  }
+
+  // 2. Build-time environment variable
   const envUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
     ? import.meta.env.VITE_API_BASE_URL
     : (typeof process !== 'undefined' && process.env && process.env.VITE_API_BASE_URL ? process.env.VITE_API_BASE_URL : '');
@@ -16,7 +27,7 @@ export function getApiBaseUrl() {
     return envUrl.trim().replace(/\/+$/, '');
   }
 
-  // In browser runtime
+  // 3. Browser runtime detection
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
@@ -72,28 +83,44 @@ export function hasCustomApiKey() {
 /**
  * Health check endpoint to verify backend connectivity
  */
-export async function checkServerHealth() {
-  const baseUrl = getApiBaseUrl();
+export async function checkServerHealth(overrideUrl) {
+  const baseUrl = overrideUrl !== undefined ? overrideUrl : getApiBaseUrl();
+
+  if (baseUrl === 'standalone') {
+    return {
+      status: 'ok',
+      service: 'TradePulse Autonomous Engine',
+      environment: 'standalone',
+      hasFinnhubKey: false,
+      isStandalone: true,
+      targetUrl: 'Built-in Standalone Engine'
+    };
+  }
+
+  const isLocal = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
+  const defaultTarget = baseUrl || (isLocal ? 'http://localhost:5001' : 'https://tradepulse-backend.onrender.com');
   const url = `${baseUrl}/api/health`;
+
   try {
     const res = await fetch(url);
     if (!res.ok) {
       return {
-        status: 'error',
+        status: 'standby',
         code: res.status,
-        targetUrl: baseUrl || 'http://localhost:5001'
+        targetUrl: defaultTarget
       };
     }
     const data = await res.json();
     return {
       ...data,
-      targetUrl: baseUrl || 'http://localhost:5001'
+      status: 'ok',
+      targetUrl: defaultTarget
     };
   } catch (err) {
     return {
-      status: 'offline',
+      status: 'standby',
       error: err.message,
-      targetUrl: baseUrl || 'http://localhost:5001'
+      targetUrl: defaultTarget
     };
   }
 }

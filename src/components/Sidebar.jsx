@@ -71,13 +71,13 @@ export default function Sidebar({
           <div className="avatar" id="userAvatar">
             {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
           </div>
-          <div style={{ overflow: 'hidden' }}>
+          <div className="user-info">
             <p className="user-name" id="userName" title={user?.name || 'Abhinay Singh'}>{user?.name || 'Abhinay Singh'}</p>
-            <p className="user-id" id="userClientId">{user?.clientId || 'TradePulse User'}</p>
+            <p className="user-id" id="userClientId" title={user?.clientId || 'TradePulse User'}>{user?.clientId || 'TradePulse User'}</p>
           </div>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '2px', flexShrink: 0 }}>
           {onOpenSettings && (
             <button
               onClick={onOpenSettings}
@@ -87,7 +87,7 @@ export default function Sidebar({
                 border: 'none',
                 color: 'var(--text-muted)',
                 cursor: 'pointer',
-                padding: '6px',
+                padding: '5px',
                 borderRadius: '4px',
                 display: 'inline-flex',
                 alignItems: 'center',
@@ -108,7 +108,7 @@ export default function Sidebar({
               border: 'none',
               color: 'var(--text-muted)',
               cursor: 'pointer',
-              padding: '6px',
+              padding: '5px',
               borderRadius: '4px',
               display: 'inline-flex',
               alignItems: 'center',

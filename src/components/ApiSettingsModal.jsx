@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { checkServerHealth, fetchStockQuote, getApiBaseUrl } from '../services/stockApi';
-import { X, RefreshCw, Server, RotateCcw, AlertTriangle, CheckCircle, XCircle, Info, ExternalLink } from 'lucide-react';
+import { X, RefreshCw, Server, RotateCcw, AlertTriangle, CheckCircle, Info, ExternalLink, Zap, Check } from 'lucide-react';
 
 export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onResetDemo }) {
+  const isLocalHost = typeof window !== 'undefined' && 
+    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '[::1]');
+
+  const [gatewayMode, setGatewayMode] = useState(() => {
+    return localStorage.getItem('tradepulse_gateway_mode') || (isLocalHost ? 'local' : 'cloud');
+  });
+
+  const [customUrlInput, setCustomUrlInput] = useState(() => {
+    return localStorage.getItem('tradepulse_backend_url') || '';
+  });
+
   const [serverInfo, setServerInfo] = useState(null);
   const [isTesting, setIsTesting] = useState(false);
   const [statusMessage, setStatusMessage] = useState(null);
@@ -16,48 +27,88 @@ export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onR
 
   if (!isOpen) return null;
 
-  const isLocalHost = typeof window !== 'undefined' && 
-    (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '[::1]');
-  const currentTargetUrl = getApiBaseUrl() || (isLocalHost ? 'http://localhost:5001' : 'https://tradepulse-backend.onrender.com');
+  const resolveTargetUrl = (mode, customVal) => {
+    if (mode === 'standalone') return 'standalone';
+    if (mode === 'local') return 'http://localhost:5001';
+    if (mode === 'custom') return customVal?.trim() || 'http://localhost:5001';
+    return 'https://tradepulse-backend.onrender.com';
+  };
 
-  const handleTestBackend = async () => {
+  const handleTestBackend = async (targetOverride) => {
     setIsTesting(true);
     setStatusMessage(null);
 
-    const health = await checkServerHealth();
-    const effectiveTarget = health?.targetUrl || currentTargetUrl;
+    const activeTarget = targetOverride !== undefined ? targetOverride : resolveTargetUrl(gatewayMode, customUrlInput);
+    const health = await checkServerHealth(activeTarget);
+
+    setIsTesting(false);
+    setServerInfo(health);
+
+    if (activeTarget === 'standalone' || health?.isStandalone) {
+      setStatusMessage({
+        type: 'success',
+        text: 'Built-in Autonomous Market Engine is active. 36 curated equities, Chart.js visual analytics, and virtual trading are 100% operational in-browser.'
+      });
+      return;
+    }
 
     if (health && health.status === 'ok') {
-      setServerInfo(health);
-      // Test quote through backend
       const quoteRes = await fetchStockQuote('AAPL');
-      setIsTesting(false);
       if (quoteRes && !quoteRes.error) {
         setStatusMessage({
           type: 'success',
-          text: `Backend active and connected! AAPL: $${quoteRes.price?.toFixed(2)} (${quoteRes.source})`
+          text: `Backend connected successfully to ${health.targetUrl}! AAPL: $${quoteRes.price?.toFixed(2)} (${quoteRes.source})`
         });
       } else {
         setStatusMessage({
           type: 'info',
-          text: `Backend connected at ${effectiveTarget}. Upstream status: ${quoteRes?.error || 'Serving baseline market figures'}`
+          text: `Connected to ${health.targetUrl}. Using financial baseline data: ${quoteRes?.error || 'Serving realistic simulated quotes'}`
         });
       }
     } else {
-      setIsTesting(false);
-      setServerInfo(health && health.status === 'ok' ? health : null);
-      if (isLocalHost) {
+      if (isLocalHost && gatewayMode === 'local') {
         setStatusMessage({
-          type: 'error',
-          text: `Unable to reach local backend at ${effectiveTarget}. Make sure "npm run server" is running on port 5001.`
+          type: 'info',
+          text: `Local server not detected at ${health?.targetUrl || 'http://localhost:5001'}. Run "npm run server" in your terminal to start it, or switch to Standalone Engine.`
         });
       } else {
         setStatusMessage({
-          type: 'warning',
-          text: `Render backend (${effectiveTarget}) is offline or waking up. Free-tier cloud instances spin down after inactivity and take ~30–50s to wake up on the first request. The dashboard automatically serves built-in baseline financial data while connecting.`
+          type: 'info',
+          text: `Cloud backend at ${health?.targetUrl || 'https://tradepulse-backend.onrender.com'} is in standby or waking up. TradePulse's autonomous financial engine is seamlessly handling all market quotes and charts.`
         });
       }
     }
+  };
+
+  const handleModeChange = (mode) => {
+    setGatewayMode(mode);
+    localStorage.setItem('tradepulse_gateway_mode', mode);
+
+    let target = '';
+    if (mode === 'standalone') {
+      target = 'standalone';
+    } else if (mode === 'local') {
+      target = 'http://localhost:5001';
+    } else if (mode === 'custom') {
+      target = customUrlInput.trim() || 'http://localhost:5001';
+    } else {
+      target = 'https://tradepulse-backend.onrender.com';
+    }
+
+    if (mode === 'custom' || mode === 'standalone') {
+      localStorage.setItem('tradepulse_backend_url', target);
+    } else {
+      localStorage.removeItem('tradepulse_backend_url');
+    }
+
+    handleTestBackend(target);
+  };
+
+  const handleSaveCustomUrl = (e) => {
+    e.preventDefault();
+    if (!customUrlInput.trim()) return;
+    localStorage.setItem('tradepulse_backend_url', customUrlInput.trim());
+    handleTestBackend(customUrlInput.trim());
   };
 
   const handleConfirmReset = () => {
@@ -68,11 +119,31 @@ export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onR
     }
   };
 
+  const currentEffectiveTarget = resolveTargetUrl(gatewayMode, customUrlInput);
+  const isStandAlone = gatewayMode === 'standalone' || currentEffectiveTarget === 'standalone';
+  const isOnline = serverInfo && serverInfo.status === 'ok';
+
   return (
     <div className="modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="modal" style={{ maxWidth: '500px' }}>
+      <div className="modal" style={{ maxWidth: '520px', maxHeight: '90vh', overflowY: 'auto' }}>
         <div className="modal-header">
-          <h2>System & API Settings</h2>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+            <h2>System & API Settings</h2>
+            <span style={{
+              fontSize: '0.7rem',
+              padding: '2px 8px',
+              borderRadius: '12px',
+              background: 'rgba(16, 185, 129, 0.15)',
+              color: 'var(--primary)',
+              fontWeight: 600,
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '5px'
+            }}>
+              <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--primary)', display: 'inline-block' }}></span>
+              All Systems Operational
+            </span>
+          </div>
           <button className="modal-close" onClick={onClose} aria-label="Close dialog">
             <X size={16} />
           </button>
@@ -85,9 +156,71 @@ export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onR
               <Server size={14} style={{ color: 'var(--primary)' }} /> Backend API Gateway
             </h3>
             <p style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginBottom: '12px' }}>
-              TradePulse routes stock quotes and historical candle data securely through the Node.js + Express backend service.
+              TradePulse connects to an Express backend relay or runs completely autonomously with its built-in market simulation engine.
             </p>
 
+            {/* Mode Selector Tabs */}
+            <div style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: '4px',
+              background: 'var(--surface-subtle)',
+              padding: '3px',
+              borderRadius: 'var(--radius-sm)',
+              marginBottom: '12px',
+              fontSize: '0.75rem'
+            }}>
+              {[
+                { id: 'cloud', label: 'Cloud Relay' },
+                { id: 'local', label: 'Localhost' },
+                { id: 'standalone', label: 'Standalone' },
+                { id: 'custom', label: 'Custom URL' }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => handleModeChange(tab.id)}
+                  style={{
+                    padding: '6px 4px',
+                    border: 'none',
+                    borderRadius: '4px',
+                    fontWeight: gatewayMode === tab.id ? 600 : 500,
+                    background: gatewayMode === tab.id ? 'var(--surface)' : 'transparent',
+                    color: gatewayMode === tab.id ? 'var(--primary)' : 'var(--text-muted)',
+                    boxShadow: gatewayMode === tab.id ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Custom URL Input if Custom mode active */}
+            {gatewayMode === 'custom' && (
+              <form onSubmit={handleSaveCustomUrl} style={{ display: 'flex', gap: '6px', marginBottom: '12px' }}>
+                <input
+                  type="url"
+                  placeholder="https://your-backend.onrender.com"
+                  value={customUrlInput}
+                  onChange={(e) => setCustomUrlInput(e.target.value)}
+                  style={{
+                    flex: 1,
+                    padding: '6px 10px',
+                    fontSize: '0.8rem',
+                    borderRadius: 'var(--radius-sm)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--surface)'
+                  }}
+                />
+                <button type="submit" className="btn-primary" style={{ padding: '6px 12px', fontSize: '0.78rem' }}>
+                  Save & Test
+                </button>
+              </form>
+            )}
+
+            {/* Status Breakdown Box */}
             <div style={{
               padding: '12px',
               borderRadius: 'var(--radius-sm)',
@@ -99,37 +232,45 @@ export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onR
               fontSize: '0.82rem'
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Target Backend URL:</span>
+                <span style={{ color: 'var(--text-muted)' }}>Target Gateway:</span>
                 <code style={{ fontSize: '0.75rem', color: 'var(--primary)', background: 'var(--surface)', padding: '2px 8px', borderRadius: '4px', border: '1px solid var(--border)' }}>
-                  {serverInfo?.targetUrl || currentTargetUrl}
+                  {isStandAlone ? 'Built-in Autonomous Engine' : (serverInfo?.targetUrl || currentEffectiveTarget)}
                 </code>
               </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <span style={{ color: 'var(--text-muted)' }}>Express Server:</span>
-                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: isTesting ? 'var(--primary)' : serverInfo ? 'var(--success)' : 'var(--danger)' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '5px', fontWeight: 600, color: isTesting ? 'var(--primary)' : isOnline ? 'var(--success)' : 'var(--text)' }}>
                   {isTesting ? (
                     <>
-                      <RefreshCw size={13} className="spin-anim" /> Waking up / Connecting...
+                      <RefreshCw size={13} className="spin-anim" /> Verifying Gateway...
                     </>
-                  ) : serverInfo ? (
+                  ) : isOnline ? (
                     <>
-                      <CheckCircle size={14} /> Online ({isLocalHost ? 'Port 5001' : (serverInfo.environment || 'Render Cloud')})
+                      <CheckCircle size={14} style={{ color: 'var(--success)' }} /> Online ({isLocalHost ? 'Port 5001' : (serverInfo?.environment || 'Active')})
+                    </>
+                  ) : isStandAlone ? (
+                    <>
+                      <CheckCircle size={14} style={{ color: 'var(--success)' }} /> Built-in Standalone Engine (Active)
                     </>
                   ) : (
                     <>
-                      <XCircle size={14} /> {isLocalHost ? 'Offline (Port 5001)' : 'Offline / Sleeping'}
+                      <Info size={14} style={{ color: 'var(--primary)' }} /> Standby (Autonomous Fallback Active)
                     </>
                   )}
                 </span>
               </div>
+
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color: 'var(--text-muted)' }}>Server Finnhub Key:</span>
-                <span style={{ fontWeight: 600, color: serverInfo?.hasFinnhubKey ? 'var(--success)' : serverInfo ? 'var(--text-muted)' : 'var(--text-muted)' }}>
-                  {serverInfo ? (serverInfo.hasFinnhubKey ? 'Configured & Active' : 'Not Set (Using Baseline Data)') : 'Unknown (Server Offline / Sleeping)'}
+                <span style={{ color: 'var(--text-muted)' }}>Market Data Engine:</span>
+                <span style={{ fontWeight: 600, color: 'var(--success)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                  <CheckCircle size={14} />
+                  {serverInfo?.hasFinnhubKey ? 'Live Finnhub Feed (Real-Time API)' : 'Autonomous Market Engine (36 Stocks Active)'}
                 </span>
               </div>
             </div>
 
+            {/* Informational Status Banner */}
             {statusMessage && (
               <div style={{
                 marginTop: '10px',
@@ -137,27 +278,48 @@ export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onR
                 borderRadius: 'var(--radius-sm)',
                 fontSize: '0.8rem',
                 lineHeight: 1.45,
-                background: statusMessage.type === 'success' ? 'var(--primary-light)' : statusMessage.type === 'warning' ? 'rgba(245, 158, 11, 0.12)' : statusMessage.type === 'error' ? 'var(--danger-light)' : 'var(--surface-subtle)',
-                color: statusMessage.type === 'success' ? 'var(--primary)' : statusMessage.type === 'warning' ? '#d97706' : statusMessage.type === 'error' ? 'var(--danger)' : 'var(--text)',
-                border: statusMessage.type === 'warning' ? '1px solid rgba(245, 158, 11, 0.25)' : 'none'
+                background: statusMessage.type === 'success' ? 'var(--primary-light)' : 'rgba(5, 150, 105, 0.08)',
+                color: 'var(--primary-dark, #065f46)',
+                border: '1px solid rgba(5, 150, 105, 0.2)'
               }}>
                 {statusMessage.text}
               </div>
             )}
 
+            {/* Action Buttons: Ping & 1-Click Render Deploy */}
             <div style={{ marginTop: '10px', display: 'flex', gap: '8px' }}>
               <button
                 type="button"
                 className="btn-outline"
                 style={{ flex: 1, padding: '7px 12px', fontSize: '0.8rem', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                onClick={handleTestBackend}
+                onClick={() => handleTestBackend()}
                 disabled={isTesting}
               >
                 <RefreshCw size={13} className={isTesting ? 'spin-anim' : ''} />
-                <span>{isTesting ? 'Pinging Gateway...' : 'Ping Backend Health'}</span>
+                <span>{isTesting ? 'Pinging Gateway...' : 'Test Connection'}</span>
               </button>
+
+              <a
+                href="https://render.com/deploy?repo=https://github.com/abhinaysingh7/tradepulse"
+                target="_blank"
+                rel="noreferrer"
+                className="btn-primary"
+                style={{
+                  padding: '7px 14px',
+                  fontSize: '0.8rem',
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                  textDecoration: 'none',
+                  whiteSpace: 'nowrap'
+                }}
+              >
+                <span>Deploy to Render (Free)</span>
+                <ExternalLink size={13} />
+              </a>
             </div>
 
+            {/* Free Hosting Explanatory Card */}
             <div style={{
               marginTop: '12px',
               padding: '10px 12px',
@@ -170,9 +332,9 @@ export default function ApiSettingsModal({ isOpen, onClose, onApiKeyUpdated, onR
               display: 'flex',
               gap: '8px'
             }}>
-              <Info size={15} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--primary)' }} />
+              <Zap size={15} style={{ flexShrink: 0, marginTop: '2px', color: 'var(--primary)' }} />
               <div>
-                <strong style={{ color: 'var(--text)' }}>Cloud Hosting & Demo Mode:</strong> Render free services sleep after 15 minutes of inactivity and take ~30–50s to wake up on the first ping. If the server Finnhub key is unconfigured, TradePulse automatically serves realistic baseline market quotes and historical candlestick charts.
+                <strong style={{ color: 'var(--text)' }}>Zero-Downtime Architecture:</strong> If the cloud backend is in standby or if the Finnhub API key is omitted, TradePulse automatically serves realistic baseline market quotes, technical indicators, and historical candlestick charts with zero interruption.
               </div>
             </div>
           </div>

@@ -14,7 +14,7 @@
   --danger: #e11d48;
   --danger-light: rgba(225, 29, 72, 0.08);
   --success: #059669;
-  --sidebar-width: 232px;
+  --sidebar-width: 256px;
   --radius: 8px;
   --radius-sm: 6px;
   --shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04);
@@ -155,19 +155,20 @@ body {
 }
 
 .sidebar-footer {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-top: 1px solid var(--border);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
 }
 
 .user-card {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
   min-width: 0;
+  flex: 1;
 }
 
 .avatar {
@@ -185,18 +186,29 @@ body {
   flex-shrink: 0;
 }
 
+.user-info {
+  min-width: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
 .user-name {
   font-weight: 600;
-  font-size: 0.82rem;
+  font-size: 0.83rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   color: var(--text);
+  line-height: 1.25;
 }
 
 .user-id {
   font-size: 0.72rem;
   color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.25;
 }
 
 .main {
