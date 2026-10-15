@@ -4,20 +4,26 @@ const AUTH_USERS_KEY = 'tradepulse_users';
 const AUTH_SESSION_KEY = 'tradepulse_session';
 
 const DEMO_USER = {
-  name: 'Ankit Sharma',
+  name: 'Abhinay Singh',
   email: 'demo@tradepulse.com',
   password: 'demo123',
-  clientId: 'TP1024'
+  clientId: 'TradePulse User'
 };
 
 function getUsers() {
   const stored = localStorage.getItem(AUTH_USERS_KEY);
-  const users = stored ? JSON.parse(stored) : [];
+  let users = stored ? JSON.parse(stored) : [];
+  users = users.map(u => {
+    if (u.email === DEMO_USER.email || u.name === 'Ankit Sharma') {
+      return { ...u, name: 'Abhinay Singh', clientId: 'TradePulse User' };
+    }
+    return u;
+  });
   const hasDemo = users.some(u => u.email === DEMO_USER.email);
   if (!hasDemo) {
     users.unshift({ ...DEMO_USER });
-    localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
   }
+  localStorage.setItem(AUTH_USERS_KEY, JSON.stringify(users));
   return users;
 }
 
@@ -27,14 +33,22 @@ function saveUsers(users) {
 
 function getSession() {
   const session = localStorage.getItem(AUTH_SESSION_KEY);
-  return session ? JSON.parse(session) : null;
+  if (!session) return null;
+  try {
+    const parsed = JSON.parse(session);
+    if (parsed.name === 'Ankit Sharma') parsed.name = 'Abhinay Singh';
+    if (parsed.clientId === 'TP1024') parsed.clientId = 'TradePulse User';
+    return parsed;
+  } catch (e) {
+    return null;
+  }
 }
 
 function setSession(user) {
   localStorage.setItem(AUTH_SESSION_KEY, JSON.stringify({
-    name: user.name,
+    name: user.name || 'Abhinay Singh',
     email: user.email,
-    clientId: user.clientId || 'TP' + Math.floor(1000 + Math.random() * 9000)
+    clientId: user.clientId || 'TradePulse User'
   }));
 }
 

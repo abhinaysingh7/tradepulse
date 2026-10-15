@@ -1,10 +1,35 @@
 // TradePulse — Stock API Service & Financial Market Engine
-// Connects to the Express backend (/api/stocks) instead of directly calling third parties
+// Connects to the Express backend (/api/stocks) with automatic local & production routing
 
-const RAW_BASE_URL = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
-  ? import.meta.env.VITE_API_BASE_URL
-  : (typeof process !== 'undefined' && process.env && process.env.VITE_API_BASE_URL ? process.env.VITE_API_BASE_URL : '');
-const API_BASE_URL = RAW_BASE_URL.trim().replace(/\/+$/, '');
+/**
+ * Resolves the API base URL dynamically:
+ * - Respects explicit VITE_API_BASE_URL if configured
+ * - Uses relative '' on localhost/127.0.0.1 (proxied by Vite to http://127.0.0.1:5001)
+ * - Defaults to deployed Render backend in production (https://tradepulse-backend.onrender.com)
+ */
+export function getApiBaseUrl() {
+  const envUrl = (typeof import.meta !== 'undefined' && import.meta.env && import.meta.env.VITE_API_BASE_URL)
+    ? import.meta.env.VITE_API_BASE_URL
+    : (typeof process !== 'undefined' && process.env && process.env.VITE_API_BASE_URL ? process.env.VITE_API_BASE_URL : '');
+
+  if (envUrl && envUrl.trim()) {
+    return envUrl.trim().replace(/\/+$/, '');
+  }
+
+  // In browser runtime
+  if (typeof window !== 'undefined') {
+    const hostname = window.location.hostname;
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]';
+    if (isLocalhost) {
+      return '';
+    }
+    // In production (GitHub Pages or Render static frontend), connect to deployed Render backend
+    return 'https://tradepulse-backend.onrender.com';
+  }
+
+  // Node.js test environment default
+  return '';
+}
 
 // Indian NSE/BSE Symbols list
 const INR_SYMBOLS = [
@@ -48,13 +73,28 @@ export function hasCustomApiKey() {
  * Health check endpoint to verify backend connectivity
  */
 export async function checkServerHealth() {
-  const url = `${API_BASE_URL}/api/health`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/health`;
   try {
     const res = await fetch(url);
-    if (!res.ok) return { status: 'error', code: res.status };
-    return await res.json();
+    if (!res.ok) {
+      return {
+        status: 'error',
+        code: res.status,
+        targetUrl: baseUrl || 'http://localhost:5001'
+      };
+    }
+    const data = await res.json();
+    return {
+      ...data,
+      targetUrl: baseUrl || 'http://localhost:5001'
+    };
   } catch (err) {
-    return { status: 'offline', error: err.message };
+    return {
+      status: 'offline',
+      error: err.message,
+      targetUrl: baseUrl || 'http://localhost:5001'
+    };
   }
 }
 
@@ -63,7 +103,8 @@ export async function checkServerHealth() {
  */
 export async function fetchStockQuote(symbol) {
   const cleanSymbol = symbol.toUpperCase().trim();
-  const url = `${API_BASE_URL}/api/stocks/quote?symbol=${encodeURIComponent(cleanSymbol)}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/stocks/quote?symbol=${encodeURIComponent(cleanSymbol)}`;
 
   try {
     const res = await fetch(url);
@@ -120,7 +161,8 @@ export async function fetchStockQuote(symbol) {
  */
 export async function fetchCompanyProfile(symbol) {
   const cleanSymbol = symbol.toUpperCase().trim();
-  const url = `${API_BASE_URL}/api/stocks/profile?symbol=${encodeURIComponent(cleanSymbol)}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/stocks/profile?symbol=${encodeURIComponent(cleanSymbol)}`;
 
   try {
     const res = await fetch(url);
@@ -242,7 +284,8 @@ export async function fetchHistoricalCandles(symbol, period = '1M', fallbackPric
     default: from = now - (30 * 24 * 3600); resolution = 'D';
   }
 
-  const url = `${API_BASE_URL}/api/stocks/candles?symbol=${encodeURIComponent(cleanSymbol)}&resolution=${resolution}&from=${from}&to=${now}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/stocks/candles?symbol=${encodeURIComponent(cleanSymbol)}&resolution=${resolution}&from=${from}&to=${now}`;
 
   try {
     const res = await fetch(url);
@@ -279,7 +322,8 @@ export async function fetchHistoricalCandles(symbol, period = '1M', fallbackPric
  */
 export async function searchStocks(query) {
   if (!query || query.trim().length === 0) return [];
-  const url = `${API_BASE_URL}/api/stocks/search?q=${encodeURIComponent(query.trim())}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}/api/stocks/search?q=${encodeURIComponent(query.trim())}`;
 
   try {
     const res = await fetch(url);

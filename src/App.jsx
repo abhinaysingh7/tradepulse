@@ -25,10 +25,32 @@ export default function App() {
   const [session, setSession] = useState(() => {
     const saved = localStorage.getItem('tradepulse_session');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { return null; }
+      try {
+        const parsed = JSON.parse(saved);
+        if (parsed && typeof parsed === 'object') {
+          let updated = false;
+          // Safely migrate legacy dummy profile without touching portfolio, cash, watchlist or alerts
+          if (parsed.name === 'Ankit Sharma' || !parsed.name || parsed.name === 'Demo User') {
+            parsed.name = 'Abhinay Singh';
+            updated = true;
+          }
+          if (parsed.clientId === 'TP1024' || !parsed.clientId) {
+            parsed.clientId = 'TradePulse User';
+            updated = true;
+          }
+          if (updated) {
+            localStorage.setItem('tradepulse_session', JSON.stringify(parsed));
+          }
+          return parsed;
+        }
+      } catch (e) { }
     }
-    // Default demo session for immediate preview
-    return { name: 'Ankit Sharma', email: 'demo@tradepulse.com', clientId: 'TP1024' };
+    // Default demo session for immediate preview with Abhinay Singh
+    const initialSession = { name: 'Abhinay Singh', email: 'demo@tradepulse.com', clientId: 'TradePulse User' };
+    try {
+      localStorage.setItem('tradepulse_session', JSON.stringify(initialSession));
+    } catch (e) { }
+    return initialSession;
   });
 
   // ─── Theme State ───

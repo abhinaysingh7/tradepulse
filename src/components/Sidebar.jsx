@@ -69,11 +69,11 @@ export default function Sidebar({
       <div className="sidebar-footer">
         <div className="user-card">
           <div className="avatar" id="userAvatar">
-            {user?.name ? user.name.charAt(0).toUpperCase() : 'U'}
+            {user?.name ? user.name.charAt(0).toUpperCase() : 'A'}
           </div>
           <div style={{ overflow: 'hidden' }}>
-            <p className="user-name" id="userName">{user?.name || 'Demo User'}</p>
-            <p className="user-id" id="userClientId">{user?.clientId || 'TP1024'}</p>
+            <p className="user-name" id="userName" title={user?.name || 'Abhinay Singh'}>{user?.name || 'Abhinay Singh'}</p>
+            <p className="user-id" id="userClientId">{user?.clientId || 'TradePulse User'}</p>
           </div>
         </div>
 

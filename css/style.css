@@ -1390,6 +1390,10 @@ body {
   animation: spin 0.8s linear infinite;
   display: inline-block;
 }
+.spin-anim {
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
 @keyframes spin {
   to { transform: rotate(360deg); }
 }

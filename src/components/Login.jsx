@@ -3,10 +3,10 @@ import { Check } from 'lucide-react';
 import TradePulseLogo from './TradePulseLogo';
 
 const DEMO_USER = {
-  name: 'Ankit Sharma',
+  name: 'Abhinay Singh',
   email: 'demo@tradepulse.com',
   password: 'demo123',
-  clientId: 'TP1024'
+  clientId: 'TradePulse User'
 };
 
 export default function Login({ onLoginSuccess }) {
@@ -26,11 +26,18 @@ export default function Login({ onLoginSuccess }) {
     setError('');
 
     const stored = localStorage.getItem('tradepulse_users');
-    const users = stored ? JSON.parse(stored) : [];
+    let users = stored ? JSON.parse(stored) : [];
+    // Safely migrate any legacy demo user records
+    users = users.map(u => {
+      if (u.email === DEMO_USER.email || u.name === 'Ankit Sharma') {
+        return { ...u, name: 'Abhinay Singh', clientId: 'TradePulse User' };
+      }
+      return u;
+    });
     if (!users.some(u => u.email === DEMO_USER.email)) {
       users.unshift({ ...DEMO_USER });
-      localStorage.setItem('tradepulse_users', JSON.stringify(users));
     }
+    localStorage.setItem('tradepulse_users', JSON.stringify(users));
 
     const user = users.find(u => u.email.toLowerCase() === loginEmail.toLowerCase());
     if (!user || user.password !== loginPassword) {
@@ -39,9 +46,9 @@ export default function Login({ onLoginSuccess }) {
     }
 
     const session = {
-      name: user.name,
+      name: user.name || 'Abhinay Singh',
       email: user.email,
-      clientId: user.clientId || 'TP' + Math.floor(1000 + Math.random() * 9000)
+      clientId: user.clientId || 'TradePulse User'
     };
     localStorage.setItem('tradepulse_session', JSON.stringify(session));
     onLoginSuccess(session);
