@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradePulse — Stock Market Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    if (!localStorage.getItem('tradepulse_session')) {
+      window.location.href = 'login.html';
+    }
+  </script>
+</head>
+<body>
+  <div class="app">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+      <div class="logo">
+        <span class="logo-icon">📈</span>
+        <span class="logo-text">TradePulse</span>
+      </div>
+      <nav class="nav">
+        <button class="nav-item active" data-section="dashboard">
+          <span class="nav-icon">🏠</span> Dashboard
+        </button>
+        <button class="nav-item" data-section="markets">
+          <span class="nav-icon">📊</span> Markets
+        </button>
+        <button class="nav-item" data-section="portfolio">
+          <span class="nav-icon">💼</span> Portfolio
+        </button>
+        <button class="nav-item" data-section="watchlist">
+          <span class="nav-icon">⭐</span> Watchlist
+        </button>
+      </nav>
+      <div class="sidebar-footer">
+        <div class="user-card">
+          <div class="avatar" id="userAvatar">A</div>
+          <div>
+            <p class="user-name" id="userName">User</p>
+            <p class="user-id" id="userClientId">Client ID: —</p>
+          </div>
+        </div>
+        <button class="btn-logout" id="logoutBtn">Logout</button>
+      </div>
+    </aside>
+
+    <!-- Main content -->
+    <main class="main">
+      <header class="topbar">
+        <button class="menu-toggle" id="menuToggle" aria-label="Toggle menu">☰</button>
+        <div class="search-box">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="globalSearch" placeholder="Search stocks (e.g. RELIANCE, TCS)...">
+        </div>
+        <div class="topbar-actions">
+          <button class="theme-toggle" id="themeToggle" title="Toggle dark mode">🌙</button>
+          <button class="btn-outline" id="resetDemo">Reset Demo</button>
+          <div class="market-status">
+            <span class="status-dot"></span> Market Open
+          </div>
+        </div>
+      </header>
+
+      <!-- Dashboard -->
+      <section class="section active" id="dashboard">
+        <h1 class="page-title">Dashboard</h1>
+        <p class="page-subtitle">Track indices, portfolio & market movers at a glance</p>
+
+        <div class="indices-grid" id="indicesGrid"></div>
+
+        <div class="dashboard-grid">
+          <div class="card portfolio-summary-card">
+            <h2>Portfolio Value</h2>
+            <p class="portfolio-value" id="portfolioValue">₹0.00</p>
+            <p class="portfolio-change" id="portfolioChange">+₹0.00 (0.00%)</p>
+            <div class="summary-stats">
+              <div>
+                <span class="stat-label">Invested</span>
+                <span class="stat-value" id="investedAmount">₹0</span>
+              </div>
+              <div>
+                <span class="stat-label">Today's P&L</span>
+                <span class="stat-value" id="todayPnl">₹0</span>
+              </div>
+              <div>
+                <span class="stat-label">Holdings</span>
+                <span class="stat-value" id="holdingsCount">0</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>Top Gainers</h2>
+              <a href="#" class="link" data-goto="markets">View all</a>
+            </div>
+            <div class="mini-stock-list" id="topGainers"></div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <h2>Top Losers</h2>
+              <a href="#" class="link" data-goto="markets">View all</a>
+            </div>
+            <div class="mini-stock-list" id="topLosers"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Markets -->
+      <section class="section" id="markets">
+        <h1 class="page-title">Markets</h1>
+        <p class="page-subtitle">Explore NSE stocks — prices update live (simulated)</p>
+
+        <div class="filter-bar">
+          <div class="tabs" id="marketTabs">
+            <button class="tab active" data-filter="all">All Stocks</button>
+            <button class="tab" data-filter="gainers">Gainers</button>
+            <button class="tab" data-filter="losers">Losers</button>
+            <button class="tab" data-filter="nifty50">Nifty 50</button>
+          </div>
+        </div>
+
+        <div class="card stock-table-card">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Company</th>
+                <th>Price</th>
+                <th>Change</th>
+                <th>% Change</th>
+                <th>Volume</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stockTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Portfolio -->
+      <section class="section" id="portfolio">
+        <h1 class="page-title">Portfolio</h1>
+        <p class="page-subtitle">Your holdings and profit/loss breakdown</p>
+
+        <div class="card" id="portfolioEmpty">
+          <div class="empty-state">
+            <span class="empty-icon">📭</span>
+            <h3>No holdings yet</h3>
+            <p>Buy stocks from Markets to build your portfolio.</p>
+            <button class="btn-primary" data-goto="markets">Explore Markets</button>
+          </div>
+        </div>
+
+        <div class="card hidden" id="portfolioTableCard">
+          <table class="stock-table">
+            <thead>
+              <tr>
+                <th>Stock</th>
+                <th>Qty</th>
+                <th>Avg Price</th>
+                <th>LTP</th>
+                <th>Current Value</th>
+                <th>P&L</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="portfolioTableBody"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- Watchlist -->
+      <section class="section" id="watchlist">
+        <h1 class="page-title">Watchlist</h1>
+        <p class="page-subtitle">Stocks you're tracking</p>
+
+        <div class="card" id="watchlistEmpty">
+          <div class="empty-state">
+            <span class="empty-icon">⭐</span>
+            <h3>Watchlist is empty</h3>
+            <p>Add stocks from Markets using the star button.</p>
+            <button class="btn-primary" data-goto="markets">Browse Stocks</button>
+          </div>
+        </div>
+
+        <div class="watchlist-grid hidden" id="watchlistGrid"></div>
+      </section>
+
+      <!-- Stock Detail -->
+      <section class="section" id="stock-detail">
+        <button class="back-btn" id="backFromDetail">← Back</button>
+        <div class="stock-detail-header">
+          <div>
+            <h1 class="page-title" id="detailStockName">—</h1>
+            <p class="page-subtitle" id="detailStockSymbol">— · NSE</p>
+          </div>
+          <div class="detail-price-block">
+            <p class="detail-price" id="detailPrice">₹0.00</p>
+            <p class="detail-change" id="detailChange">+0.00 (0.00%)</p>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-tabs" id="chartTabs">
+            <button class="tab active" data-period="1D">1D</button>
+            <button class="tab" data-period="1W">1W</button>
+            <button class="tab" data-period="1M">1M</button>
+            <button class="tab" data-period="1Y">1Y</button>
+          </div>
+          <canvas id="stockChart" width="800" height="320"></canvas>
+        </div>
+
+        <div class="detail-grid">
+          <div class="card">
+            <h2 class="card-title-sm">Key Statistics</h2>
+            <div class="stats-grid" id="detailStats"></div>
+          </div>
+          <div class="card">
+            <h2 class="card-title-sm">Quick Actions</h2>
+            <div class="detail-actions">
+              <button class="btn-primary" id="detailBuyBtn">Buy</button>
+              <button class="btn-sell btn-sell-lg" id="detailSellBtn">Sell</button>
+              <button class="btn-outline" id="detailWatchBtn">⭐ Add to Watchlist</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <!-- Buy/Sell Modal -->
+  <div class="modal-overlay hidden" id="tradeModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 id="modalTitle">Buy Stock</h2>
+        <button class="modal-close" id="modalClose">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-stock-info">
+          <h3 id="modalStockName">—</h3>
+          <p id="modalStockPrice">₹0.00</p>
+        </div>
+        <div class="form-group">
+          <label for="tradeQty">Quantity</label>
+          <input type="number" id="tradeQty" min="1" value="1">
+        </div>
+        <div class="form-group">
+          <label>Order Type</label>
+          <div class="order-types">
+            <button class="order-type active" data-type="market">Market</button>
+            <button class="order-type" data-type="limit">Limit</button>
+          </div>
+        </div>
+        <div class="trade-summary">
+          <span>Estimated Total</span>
+          <strong id="tradeTotal">₹0.00</strong>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn-outline" id="modalCancel">Cancel</button>
+        <button class="btn-primary" id="modalConfirm">Confirm Buy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="js/data.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

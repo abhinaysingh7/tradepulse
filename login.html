@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TradePulse — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <script>
+    const t = localStorage.getItem('tradepulse_theme');
+    if (t) document.documentElement.setAttribute('data-theme', t);
+  </script>
+</head>
+<body class="auth-body">
+  <div class="auth-page">
+    <div class="auth-left">
+      <div class="auth-brand">
+        <span class="logo-icon">📈</span>
+        <h1>TradePulse</h1>
+        <p>Your gateway to smart investing. Track markets, manage portfolio, and trade with confidence.</p>
+      </div>
+      <ul class="auth-features">
+        <li>📊 Live market dashboard</li>
+        <li>💼 Portfolio tracking with P&L</li>
+        <li>⭐ Personal watchlist</li>
+        <li>📈 Detailed stock charts</li>
+      </ul>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-card">
+        <div class="auth-tabs">
+          <button class="auth-tab active" data-tab="login">Login</button>
+          <button class="auth-tab" data-tab="signup">Sign Up</button>
+        </div>
+
+        <!-- Login Form -->
+        <form class="auth-form active" id="loginForm">
+          <h2>Welcome back</h2>
+          <p class="auth-subtitle">Sign in to access your dashboard</p>
+
+          <div class="form-group">
+            <label for="loginEmail">Email</label>
+            <input type="email" id="loginEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="loginPassword">Password</label>
+            <input type="password" id="loginPassword" placeholder="Enter password" required>
+          </div>
+          <p class="auth-error hidden" id="loginError"></p>
+          <button type="submit" class="btn-primary btn-full">Login</button>
+
+          <div class="demo-hint">
+            <p><strong>Demo account:</strong></p>
+            <p>Email: demo@tradepulse.com</p>
+            <p>Password: demo123</p>
+          </div>
+        </form>
+
+        <!-- Signup Form -->
+        <form class="auth-form hidden" id="signupForm">
+          <h2>Create account</h2>
+          <p class="auth-subtitle">Start your investing journey today</p>
+
+          <div class="form-group">
+            <label for="signupName">Full Name</label>
+            <input type="text" id="signupName" placeholder="Your name" required>
+          </div>
+          <div class="form-group">
+            <label for="signupEmail">Email</label>
+            <input type="email" id="signupEmail" placeholder="you@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="signupPassword">Password</label>
+            <input type="password" id="signupPassword" placeholder="Min 6 characters" minlength="6" required>
+          </div>
+          <div class="form-group">
+            <label for="signupConfirm">Confirm Password</label>
+            <input type="password" id="signupConfirm" placeholder="Confirm password" required>
+          </div>
+          <p class="auth-error hidden" id="signupError"></p>
+          <button type="submit" class="btn-primary btn-full">Create Account</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/auth.js"></script>
+</body>
+</html>
