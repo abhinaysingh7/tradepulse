@@ -43,4 +43,4 @@ services:
         destination: /index.html
     envVars:
       - key: VITE_API_BASE_URL
-        sync: false # Set to backend URL (e.g. https://tradepulse-backend.onrender.com)
+        value: https://tradepulse-backend.onrender.com
